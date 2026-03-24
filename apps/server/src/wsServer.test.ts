@@ -62,6 +62,7 @@ const asTurnId = (value: string): TurnId => TurnId.makeUnsafe(value);
 const defaultOpenService: OpenShape = {
   openBrowser: () => Effect.void,
   openInEditor: () => Effect.void,
+  openInTerminal: () => Effect.void,
 };
 
 const defaultProviderStatuses: ReadonlyArray<ServerProviderStatus> = [
@@ -846,6 +847,7 @@ describe("WebSocket Server", () => {
       issues: [],
       providers: defaultProviderStatuses,
       availableEditors: expect.any(Array),
+      availableTerminalEmulators: expect.any(Array),
     });
     expectAvailableEditors((response.result as { availableEditors: unknown }).availableEditors);
   });
@@ -871,6 +873,7 @@ describe("WebSocket Server", () => {
       issues: [],
       providers: defaultProviderStatuses,
       availableEditors: expect.any(Array),
+      availableTerminalEmulators: expect.any(Array),
     });
     expectAvailableEditors((response.result as { availableEditors: unknown }).availableEditors);
 
@@ -907,6 +910,7 @@ describe("WebSocket Server", () => {
       ],
       providers: defaultProviderStatuses,
       availableEditors: expect.any(Array),
+      availableTerminalEmulators: expect.any(Array),
     });
     expectAvailableEditors((response.result as { availableEditors: unknown }).availableEditors);
     expect(fs.readFileSync(keybindingsPath, "utf8")).toBe("{ not-json");
@@ -1008,6 +1012,7 @@ describe("WebSocket Server", () => {
         openCalls.push({ cwd: input.cwd, editor: input.editor });
         return Effect.void;
       },
+      openInTerminal: () => Effect.void,
     };
 
     server = await createTestServer({ cwd: "/my/workspace", open: openService });
@@ -1057,6 +1062,7 @@ describe("WebSocket Server", () => {
       issues: [],
       providers: defaultProviderStatuses,
       availableEditors: expect.any(Array),
+      availableTerminalEmulators: expect.any(Array),
     });
     expectAvailableEditors((response.result as { availableEditors: unknown }).availableEditors);
   });
@@ -1105,6 +1111,7 @@ describe("WebSocket Server", () => {
       issues: [],
       providers: defaultProviderStatuses,
       availableEditors: expect.any(Array),
+      availableTerminalEmulators: expect.any(Array),
     });
     expectAvailableEditors(
       (configResponse.result as { availableEditors: unknown }).availableEditors,
@@ -1487,6 +1494,7 @@ describe("WebSocket Server", () => {
       openBrowser: () => Effect.void,
       openInEditor: () =>
         Effect.sync(() => BigInt(1)).pipe(Effect.map((result) => result as unknown as void)),
+      openInTerminal: () => Effect.void,
     };
 
     try {
