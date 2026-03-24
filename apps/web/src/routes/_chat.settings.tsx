@@ -2,11 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, PlusIcon, RotateCcwIcon, Undo2Icon, XIcon } from "lucide-react";
 import { type ReactNode, useCallback, useState } from "react";
-import { type ProviderKind, DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@t3tools/contracts";
+import {
+  type ProviderKind,
+  DEFAULT_GIT_TEXT_GENERATION_MODEL,
+  DEFAULT_MODEL_BY_PROVIDER,
+} from "@t3tools/contracts";
 import { getModelOptions, normalizeModelSlug } from "@t3tools/shared/model";
 import {
   getAllProviderModelOptions,
   getAppModelOptions,
+  getConfiguredDefaultModel,
+  getConfiguredDefaultProvider,
   getCustomModelsForProvider,
   MAX_CUSTOM_MODEL_LENGTH,
   MODEL_PROVIDER_SETTINGS,
@@ -229,6 +235,26 @@ function SettingsRouteView() {
   const selectedGitTextGenerationModelLabel =
     gitTextGenerationModelOptions.find((option) => option.slug === currentGitTextGenerationModel)
       ?.name ?? currentGitTextGenerationModel;
+
+  const configuredDefaultProvider = getConfiguredDefaultProvider(settings);
+  const isDefaultProviderDirty = settings.defaultProvider !== defaults.defaultProvider;
+  const configuredDefaultModel = getConfiguredDefaultModel(settings, configuredDefaultProvider);
+  const builtInDefaultModel = DEFAULT_MODEL_BY_PROVIDER[configuredDefaultProvider];
+  const isDefaultModelDirty =
+    isDefaultProviderDirty ||
+    settings.defaultCodexModel !== defaults.defaultCodexModel ||
+    settings.defaultClaudeModel !== defaults.defaultClaudeModel;
+  const defaultModelOptions = getAppModelOptions(
+    configuredDefaultProvider,
+    configuredDefaultProvider === "codex"
+      ? settings.customCodexModels
+      : settings.customClaudeModels,
+    configuredDefaultModel,
+  );
+  const selectedDefaultModelLabel =
+    defaultModelOptions.find((option) => option.slug === configuredDefaultModel)?.name ??
+    configuredDefaultModel;
+
   const selectedCustomModelProviderSettings = MODEL_PROVIDER_SETTINGS.find(
     (providerSettings) => providerSettings.provider === selectedCustomModelProvider,
   )!;
@@ -260,6 +286,7 @@ function SettingsRouteView() {
     ...(settings.confirmThreadDelete !== defaults.confirmThreadDelete
       ? ["Delete confirmation"]
       : []),
+    ...(isDefaultModelDirty ? ["Default model"] : []),
     ...(isGitTextGenerationModelDirty ? ["Git writing model"] : []),
     ...(settings.customCodexModels.length > 0 || settings.customClaudeModels.length > 0
       ? ["Custom models"]
@@ -601,6 +628,74 @@ function SettingsRouteView() {
             </SettingsSection>
 
             <SettingsSection title="Models">
+              <SettingsRow
+                title="Default model"
+                description="The model and provider used for new threads when no other selection is active."
+                resetAction={
+                  isDefaultModelDirty ? (
+                    <SettingResetButton
+                      label="default model"
+                      onClick={() =>
+                        updateSettings({
+                          defaultProvider: defaults.defaultProvider,
+                          defaultCodexModel: defaults.defaultCodexModel,
+                          defaultClaudeModel: defaults.defaultClaudeModel,
+                        })
+                      }
+                    />
+                  ) : null
+                }
+                control={
+                  <div className="flex w-full gap-2 sm:w-auto">
+                    <Select
+                      value={configuredDefaultProvider}
+                      onValueChange={(value) => {
+                        if (value !== "codex" && value !== "claudeAgent") return;
+                        updateSettings({ defaultProvider: value });
+                      }}
+                    >
+                      <SelectTrigger className="w-full sm:w-28" aria-label="Default provider">
+                        <SelectValue>
+                          {configuredDefaultProvider === "claudeAgent" ? "Claude" : "Codex"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectPopup align="end" alignItemWithTrigger={false}>
+                        <SelectItem hideIndicator value="codex">
+                          Codex
+                        </SelectItem>
+                        <SelectItem hideIndicator value="claudeAgent">
+                          Claude
+                        </SelectItem>
+                      </SelectPopup>
+                    </Select>
+                    <Select
+                      value={configuredDefaultModel}
+                      onValueChange={(value) => {
+                        if (!value) return;
+                        const normalized = normalizeModelSlug(value, configuredDefaultProvider);
+                        if (!normalized) return;
+                        updateSettings(
+                          configuredDefaultProvider === "codex"
+                            ? { defaultCodexModel: normalized === builtInDefaultModel ? undefined : normalized }
+                            : { defaultClaudeModel: normalized === builtInDefaultModel ? undefined : normalized },
+                        );
+                      }}
+                    >
+                      <SelectTrigger className="w-full sm:w-52" aria-label="Default model">
+                        <SelectValue>{selectedDefaultModelLabel}</SelectValue>
+                      </SelectTrigger>
+                      <SelectPopup align="end" alignItemWithTrigger={false}>
+                        {defaultModelOptions.map((option) => (
+                          <SelectItem hideIndicator key={option.slug} value={option.slug}>
+                            {option.name}
+                          </SelectItem>
+                        ))}
+                      </SelectPopup>
+                    </Select>
+                  </div>
+                }
+              />
+
               <SettingsRow
                 title="Git writing model"
                 description="Used for generated commit messages, PR titles, and branch names."

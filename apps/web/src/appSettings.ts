@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { Option, Schema } from "effect";
 import {
+  ProviderKind as ProviderKindSchema,
   TrimmedNonEmptyString,
   type ProviderKind,
   type ProviderStartOptions,
@@ -61,6 +62,9 @@ export const AppSettingsSchema = Schema.Struct({
   customCodexModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customClaudeModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   textGenerationModel: Schema.optional(TrimmedNonEmptyString),
+  defaultProvider: Schema.optional(ProviderKindSchema),
+  defaultCodexModel: Schema.optional(TrimmedNonEmptyString),
+  defaultClaudeModel: Schema.optional(TrimmedNonEmptyString),
 });
 export type AppSettings = typeof AppSettingsSchema.Type;
 export interface AppModelOption {
@@ -242,6 +246,27 @@ export function getCustomModelOptionsByProvider(
     codex: getAppModelOptions("codex", customModelsByProvider.codex),
     claudeAgent: getAppModelOptions("claudeAgent", customModelsByProvider.claudeAgent),
   };
+}
+
+export function getConfiguredDefaultProvider(
+  settings: Pick<AppSettings, "defaultProvider">,
+): ProviderKind {
+  return settings.defaultProvider ?? "codex";
+}
+
+export function getConfiguredDefaultModel(
+  settings: Pick<AppSettings, "defaultCodexModel" | "defaultClaudeModel">,
+  provider: ProviderKind,
+): string {
+  const configuredModel =
+    provider === "codex" ? settings.defaultCodexModel : settings.defaultClaudeModel;
+  if (configuredModel) {
+    const normalized = normalizeModelSlug(configuredModel, provider);
+    if (normalized) {
+      return normalized;
+    }
+  }
+  return getDefaultModel(provider);
 }
 
 export function getProviderStartOptions(

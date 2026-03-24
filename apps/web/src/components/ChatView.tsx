@@ -23,7 +23,6 @@ import {
 } from "@t3tools/contracts";
 import {
   applyClaudePromptEffortPrefix,
-  getDefaultModel,
   normalizeModelSlug,
   resolveModelSlugForProvider,
 } from "@t3tools/shared/model";
@@ -121,6 +120,8 @@ import { SidebarTrigger } from "./ui/sidebar";
 import { newCommandId, newMessageId, newThreadId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import {
+  getConfiguredDefaultModel,
+  getConfiguredDefaultProvider,
   getCustomModelOptionsByProvider,
   getCustomModelsByProvider,
   getProviderStartOptions,
@@ -594,10 +595,14 @@ export default function ChatView({ threadId }: ChatViewProps) {
   const lockedProvider: ProviderKind | null = hasThreadStarted
     ? (sessionProvider ?? selectedProviderByThreadId ?? null)
     : null;
-  const selectedProvider: ProviderKind = lockedProvider ?? selectedProviderByThreadId ?? "codex";
+  const configuredDefaultProvider = getConfiguredDefaultProvider(settings);
+  const selectedProvider: ProviderKind =
+    lockedProvider ?? selectedProviderByThreadId ?? configuredDefaultProvider;
   const baseThreadModel = resolveModelSlugForProvider(
     selectedProvider,
-    activeThread?.model ?? activeProject?.model ?? getDefaultModel(selectedProvider),
+    activeThread?.model ??
+      activeProject?.model ??
+      getConfiguredDefaultModel(settings, selectedProvider),
   );
   const customModelsByProvider = useMemo(() => getCustomModelsByProvider(settings), [settings]);
   const selectedModel = useMemo(() => {
