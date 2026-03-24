@@ -206,6 +206,24 @@ export function getAppModelOptions(
   return options;
 }
 
+export function getAllProviderModelOptions(
+  customCodexModels: readonly string[],
+  customClaudeModels: readonly string[],
+  selectedModel?: string | null,
+): AppModelOption[] {
+  const codexOptions = getAppModelOptions("codex", customCodexModels, selectedModel);
+  const claudeOptions = getAppModelOptions("claudeAgent", customClaudeModels, selectedModel);
+  const seen = new Set(codexOptions.map((option) => option.slug));
+  const merged = [...codexOptions];
+  for (const option of claudeOptions) {
+    if (!seen.has(option.slug)) {
+      seen.add(option.slug);
+      merged.push(option);
+    }
+  }
+  return merged;
+}
+
 export function resolveAppModelSelection(
   provider: ProviderKind,
   customModels: Record<ProviderKind, readonly string[]>,

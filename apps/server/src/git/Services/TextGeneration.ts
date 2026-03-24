@@ -19,7 +19,7 @@ export interface CommitMessageGenerationInput {
   stagedPatch: string;
   /** When true, the model also returns a semantic branch name for the change. */
   includeBranch?: boolean;
-  /** Model to use for generation. Defaults to gpt-5.4-mini if not specified. */
+  /** Model to use for generation. Supports both Codex and Claude models. Defaults to gpt-5.4-mini if not specified. */
   model?: string;
 }
 
@@ -37,7 +37,7 @@ export interface PrContentGenerationInput {
   commitSummary: string;
   diffSummary: string;
   diffPatch: string;
-  /** Model to use for generation. Defaults to gpt-5.4-mini if not specified. */
+  /** Model to use for generation. Supports both Codex and Claude models. Defaults to gpt-5.4-mini if not specified. */
   model?: string;
 }
 
@@ -50,7 +50,7 @@ export interface BranchNameGenerationInput {
   cwd: string;
   message: string;
   attachments?: ReadonlyArray<ChatAttachment> | undefined;
-  /** Model to use for generation. Defaults to gpt-5.4-mini if not specified. */
+  /** Model to use for generation. Supports both Codex and Claude models. Defaults to gpt-5.4-mini if not specified. */
   model?: string;
 }
 
