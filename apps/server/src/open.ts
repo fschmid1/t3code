@@ -10,7 +10,7 @@ import { spawn } from "node:child_process";
 import { accessSync, constants, statSync } from "node:fs";
 import { extname, join } from "node:path";
 
-import { EDITORS, type EditorId } from "@t3tools/contracts";
+import { EDITORS, type EditorId, TERMINAL_EMULATORS, type TerminalEmulatorId } from "@t3tools/contracts";
 import { ServiceMap, Schema, Effect, Layer } from "effect";
 
 // ==============================
@@ -25,6 +25,11 @@ export class OpenError extends Schema.TaggedErrorClass<OpenError>()("OpenError",
 export interface OpenInEditorInput {
   readonly cwd: string;
   readonly editor: EditorId;
+}
+
+export interface OpenInTerminalInput {
+  readonly cwd: string;
+  readonly terminalEmulator: TerminalEmulatorId;
 }
 
 interface EditorLaunch {
@@ -177,6 +182,86 @@ export function resolveAvailableEditors(
   return available;
 }
 
+export function resolveAvailableTerminalEmulators(
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+): ReadonlyArray<TerminalEmulatorId> {
+  const available: TerminalEmulatorId[] = [];
+
+  for (const emulator of TERMINAL_EMULATORS) {
+    if (emulator.platform !== null && emulator.platform !== platform) continue;
+
+    if (platform === "darwin" && emulator.command === "open") {
+      // For macOS "open -a <App>" entries, check if the app exists
+      const appName = emulator.args[1];
+      if (!appName) continue;
+      try {
+        const appPaths = [
+          `/Applications/${appName}.app`,
+          `${env.HOME}/Applications/${appName}.app`,
+        ];
+        const found = appPaths.some((appPath) => {
+          try {
+            statSync(appPath);
+            return true;
+          } catch {
+            return false;
+          }
+        });
+        if (found) available.push(emulator.id);
+      } catch {
+        // skip
+      }
+    } else {
+      if (isCommandAvailable(emulator.command, { platform, env })) {
+        available.push(emulator.id);
+      }
+    }
+  }
+
+  return available;
+}
+
+export const resolveTerminalLaunch = Effect.fnUntraced(function* (
+  input: OpenInTerminalInput,
+  platform: NodeJS.Platform = process.platform,
+): Effect.fn.Return<EditorLaunch, OpenError> {
+  const emulatorDef = TERMINAL_EMULATORS.find((emulator) => emulator.id === input.terminalEmulator);
+  if (!emulatorDef) {
+    return yield* new OpenError({ message: `Unknown terminal emulator: ${input.terminalEmulator}` });
+  }
+
+  if (platform === "darwin" && emulatorDef.command === "open") {
+    // macOS: "open -a <App> <cwd>"
+    return { command: emulatorDef.command, args: [...emulatorDef.args, input.cwd] };
+  }
+
+  if (emulatorDef.id === "wezterm") {
+    // wezterm: "wezterm start --cwd <cwd>"
+    return { command: emulatorDef.command, args: [...emulatorDef.args, input.cwd] };
+  }
+
+  if (emulatorDef.id === "windows-terminal") {
+    // Windows Terminal: "wt -d <cwd>"
+    return { command: emulatorDef.command, args: [...emulatorDef.args, input.cwd] };
+  }
+
+  // Generic: command --working-directory <cwd> or just launch with cwd as env
+  if (emulatorDef.id === "kitty") {
+    return { command: emulatorDef.command, args: ["--directory", input.cwd] };
+  }
+
+  if (emulatorDef.id === "alacritty") {
+    return { command: emulatorDef.command, args: ["--working-directory", input.cwd] };
+  }
+
+  if (emulatorDef.id === "ghostty") {
+    return { command: emulatorDef.command, args: [`--working-directory=${input.cwd}`] };
+  }
+
+  return { command: emulatorDef.command, args: [input.cwd] };
+});
+
 /**
  * OpenShape - Service API for browser and editor launch actions.
  */
@@ -192,6 +277,13 @@ export interface OpenShape {
    * Launches the editor as a detached process so server startup is not blocked.
    */
   readonly openInEditor: (input: OpenInEditorInput) => Effect.Effect<void, OpenError>;
+
+  /**
+   * Open a terminal emulator at a given working directory.
+   *
+   * Launches the terminal as a detached process.
+   */
+  readonly openInTerminal: (input: OpenInTerminalInput) => Effect.Effect<void, OpenError>;
 }
 
 /**
@@ -270,6 +362,7 @@ const make = Effect.gen(function* () {
         catch: (cause) => new OpenError({ message: "Browser auto-open failed", cause }),
       }),
     openInEditor: (input) => Effect.flatMap(resolveEditorLaunch(input), launchDetached),
+    openInTerminal: (input) => Effect.flatMap(resolveTerminalLaunch(input), launchDetached),
   } satisfies OpenShape;
 });
 

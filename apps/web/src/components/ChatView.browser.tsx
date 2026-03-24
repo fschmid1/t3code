@@ -116,6 +116,7 @@ function createBaseServerConfig(): ServerConfig {
       },
     ],
     availableEditors: [],
+    availableTerminalEmulators: [],
   };
 }
 

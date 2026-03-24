@@ -2,6 +2,7 @@ import {
   type EditorId,
   type ProjectScript,
   type ResolvedKeybindingsConfig,
+  type TerminalEmulatorId,
   type ThreadId,
 } from "@t3tools/contracts";
 import { memo } from "react";
@@ -13,6 +14,7 @@ import ProjectScriptsControl, { type NewProjectScriptInput } from "../ProjectScr
 import { Toggle } from "../ui/toggle";
 import { SidebarTrigger } from "../ui/sidebar";
 import { OpenInPicker } from "./OpenInPicker";
+import { OpenInTerminalPicker } from "./OpenInTerminalPicker";
 
 interface ChatHeaderProps {
   activeThreadId: ThreadId;
@@ -24,6 +26,7 @@ interface ChatHeaderProps {
   preferredScriptId: string | null;
   keybindings: ResolvedKeybindingsConfig;
   availableEditors: ReadonlyArray<EditorId>;
+  availableTerminalEmulators: ReadonlyArray<TerminalEmulatorId>;
   terminalAvailable: boolean;
   terminalOpen: boolean;
   terminalToggleShortcutLabel: string | null;
@@ -48,6 +51,7 @@ export const ChatHeader = memo(function ChatHeader({
   preferredScriptId,
   keybindings,
   availableEditors,
+  availableTerminalEmulators,
   terminalAvailable,
   terminalOpen,
   terminalToggleShortcutLabel,
@@ -98,6 +102,12 @@ export const ChatHeader = memo(function ChatHeader({
           <OpenInPicker
             keybindings={keybindings}
             availableEditors={availableEditors}
+            openInCwd={openInCwd}
+          />
+        )}
+        {activeProjectName && availableTerminalEmulators.length > 0 && (
+          <OpenInTerminalPicker
+            availableTerminalEmulators={availableTerminalEmulators}
             openInCwd={openInCwd}
           />
         )}

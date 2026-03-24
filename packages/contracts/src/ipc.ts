@@ -47,6 +47,7 @@ import type {
   OrchestrationReadModel,
 } from "./orchestration";
 import { EditorId } from "./editor";
+import { TerminalEmulatorId } from "./terminalEmulator";
 
 export interface ContextMenuItem<T extends string = string> {
   id: T;
@@ -132,6 +133,7 @@ export interface NativeApi {
   };
   shell: {
     openInEditor: (cwd: string, editor: EditorId) => Promise<void>;
+    openInTerminal: (cwd: string, terminalEmulator: TerminalEmulatorId) => Promise<void>;
     openExternal: (url: string) => Promise<void>;
   };
   git: {
